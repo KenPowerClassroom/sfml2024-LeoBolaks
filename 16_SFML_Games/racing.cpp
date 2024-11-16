@@ -1,8 +1,8 @@
 #include <SFML/Graphics.hpp>
 using namespace sf;
 
-const int num=8; //checkpoints
-int points[num][2] = {300, 610,
+const int numCheckpoints=8; //checkpoints
+int points[numCheckpoints][2] = {300, 610,
                       1270,430,
                       1380,2380,
                       1900,2460,
@@ -13,9 +13,9 @@ int points[num][2] = {300, 610,
 
 struct Car
 {
-  float x,y,speed,angle; int n;
+  float x,y,speed,angle; int checkpointCounter;
 
-  Car() {speed=2; angle=0; n=0;}
+  Car() {speed=2; angle=0; checkpointCounter=0;}
 
   void move()
    {
@@ -25,11 +25,11 @@ struct Car
 
   void findTarget()
   {
-    float tx=points[n][0];
-    float ty=points[n][1];
-    float beta = angle-atan2(tx-x,-ty+y);
-    if (sin(beta)<0) angle+=0.005*speed; else angle-=0.005*speed;
-    if ((x-tx)*(x-tx)+(y-ty)*(y-ty)<25*25) n=(n+1)%num;
+    float xTarget=points[checkpointCounter][0]; // gets x position of the checkpoint
+    float yTarget=points[checkpointCounter][1]; // gets y position of the checkpoint
+    float angleDifferenceToTarget = angle-atan2(xTarget-x,-yTarget+y); // calculates the difference between angle of car and target
+    if (sin(angleDifferenceToTarget)<0) angle+=0.005*speed; else angle-=0.005*speed; // if angle is less than 0, means target is to the left of the car, else its to the right
+    if ((x-xTarget)*(x-xTarget)+(y-yTarget)*(y-yTarget)<25*25) checkpointCounter=(checkpointCounter+1)%numCheckpoints; // calculates the squared distance between car and checkpoint, then checks if car is within 25 units of the checkpoint
    }
 };
 
@@ -39,30 +39,30 @@ int racing()
     RenderWindow app(VideoMode(640, 480), "Car Racing Game!");
     app.setFramerateLimit(60);
 
-    Texture t1,t2,t3;
-    t1.loadFromFile("images/racing/background.png");
-    t2.loadFromFile("images/racing/car.png");
-    t1.setSmooth(true);
-    t2.setSmooth(true);
+    Texture backGroundTexture,carTexture,t3;
+    backGroundTexture.loadFromFile("images/racing/background.png");
+    carTexture.loadFromFile("images/racing/car.png");
+    backGroundTexture.setSmooth(true);
+    carTexture.setSmooth(true);
 
-    Sprite sBackground(t1), sCar(t2);
-    sBackground.scale(2,2);
+    Sprite backgroundSprite(backGroundTexture), carSprite(carTexture);
+    backgroundSprite.scale(2,2);
 
-    sCar.setOrigin(22, 22);
-    float R=22;
+    carSprite.setOrigin(22, 22);
+    float radius=22;
 
-    const int N=5;
-    Car car[N];
-    for(int i=0;i<N;i++)
+    const int numNpcCars=5;
+    Car npcCars[numNpcCars];
+    for(int i=0;i<numNpcCars;i++)
     {
-      car[i].x=300+i*50;
-      car[i].y=1700+i*80;
-      car[i].speed=7+i;
+      npcCars[i].x=300+i*50;
+      npcCars[i].y=1700+i*80;
+      npcCars[i].speed=7+i;
     }
 
    float speed=0,angle=0;
    float maxSpeed=12.0;
-   float acc=0.2, dec=0.3;
+   float acceleration=0.2, deceleration=0.3;
    float turnSpeed=0.08;
 
    int offsetX=0,offsetY=0;
@@ -84,61 +84,63 @@ int racing()
 
     //car movement
     if (Up && speed<maxSpeed)
-        if (speed < 0)  speed += dec;
-        else  speed += acc;
+        if (speed < 0)  speed += deceleration;
+        else  speed += acceleration;
 
     if (Down && speed>-maxSpeed)
-        if (speed > 0) speed -= dec;
-        else  speed -= acc;
+        if (speed > 0) speed -= deceleration;
+        else  speed -= acceleration;
 
     if (!Up && !Down)
-        if (speed - dec > 0) speed -= dec;
-        else if (speed + dec < 0) speed += dec;
+        if (speed - deceleration > 0) speed -= deceleration;
+        else if (speed + deceleration < 0) speed += deceleration;
         else speed = 0;
 
     if (Right && speed!=0)  angle += turnSpeed * speed/maxSpeed;
     if (Left && speed!=0)   angle -= turnSpeed * speed/maxSpeed;
 
-    car[0].speed = speed;
-    car[0].angle = angle;
+    npcCars[0].speed = speed;
+    npcCars[0].angle = angle;
 
-    for(int i=0;i<N;i++) car[i].move();
-    for(int i=1;i<N;i++) car[i].findTarget();
+    for(int i=0;i<numNpcCars;i++) npcCars[i].move();
+    for(int i=1;i<numNpcCars;i++) npcCars[i].findTarget();
 
     //collision
-    for(int i=0;i<N;i++)
-    for(int j=0;j<N;j++)
+    for(int carIndex=0;carIndex<numNpcCars;carIndex++) // loop selects a car
+    for(int otherCarIndex=0;otherCarIndex<numNpcCars;otherCarIndex++) // compares selected car to other cars
     {      
-        int dx=0, dy=0;
-        while (dx*dx+dy*dy<4*R*R)
+        int xDistance=0, yDistance=0; // horizontal and vertical distance between 2 cars
+        while (xDistance*xDistance+yDistance*yDistance<4*radius*radius) // while the squared distance between between 2 cars is less than the set collision threshold
          {
-           car[i].x+=dx/10.0;
-           car[i].x+=dy/10.0;
-           car[j].x-=dx/10.0;
-           car[j].y-=dy/10.0;
-           dx = car[i].x-car[j].x;
-           dy = car[i].y-car[j].y;
-           if (!dx && !dy) break;
+            // moves the 2 cars in opposite directions to prevent overlapping
+           npcCars[carIndex].x+=xDistance/10.0;
+           npcCars[carIndex].x+=yDistance/10.0;
+           npcCars[otherCarIndex].x-=xDistance/10.0;
+           npcCars[otherCarIndex].y-=xDistance/10.0;
+           // distances between the cars recalculated to check while loop
+           xDistance = npcCars[carIndex].x-npcCars[otherCarIndex].x;
+           yDistance = npcCars[carIndex].y-npcCars[otherCarIndex].y;
+           if (!xDistance && !yDistance) break; // prevents infinite looping if cars are exactly on top of each other
          }
     }
 
 
     app.clear(Color::White);
 
-    if (car[0].x>320) offsetX = car[0].x-320;
-    if (car[0].y>240) offsetY = car[0].y-240;
+    if (npcCars[0].x>320) offsetX = npcCars[0].x-320;
+    if (npcCars[0].y>240) offsetY = npcCars[0].y-240;
 
-    sBackground.setPosition(-offsetX,-offsetY);
-    app.draw(sBackground);
+    backgroundSprite.setPosition(-offsetX,-offsetY);
+    app.draw(backgroundSprite);
 
     Color colors[10] = {Color::Red, Color::Green, Color::Magenta, Color::Blue, Color::White};
 
-    for(int i=0;i<N;i++)
+    for(int i=0;i<numNpcCars;i++)
     {
-      sCar.setPosition(car[i].x-offsetX,car[i].y-offsetY);
-      sCar.setRotation(car[i].angle*180/3.141593);
-      sCar.setColor(colors[i]);
-      app.draw(sCar);
+      carSprite.setPosition(npcCars[i].x-offsetX,npcCars[i].y-offsetY);
+      carSprite.setRotation(npcCars[i].angle*180/3.141593);
+      carSprite.setColor(colors[i]);
+      app.draw(carSprite);
     }
 
     app.display();
