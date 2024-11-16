@@ -34,9 +34,24 @@ struct Car
     if ((x-xTarget)*(x-xTarget)+(y-yTarget)*(y-yTarget)<CHECKPOINT_SIZE*CHECKPOINT_SIZE) checkpointCounter=(checkpointCounter+1)%NUMBER_OF_CHECKPOINTS; // calculates the squared distance between car and checkpoint, then checks if car is within 25 units of the checkpoint
    }
 };
-  
 
-
+// struct for const movement related variables
+struct Movement
+{
+   static constexpr float MAX_SPEED = 12.0f;
+   static constexpr float ACCELERATION = 0.2f;
+   static constexpr float DECELERATION = 0.3f;
+   static constexpr float TURN_SPEED = 0.08f;
+};
+  // function which sets up textures
+void setTextures(Texture &backGroundTexture, Texture &carTexture)
+{
+    backGroundTexture.loadFromFile("images/racing/background.png");
+    carTexture.loadFromFile("images/racing/car.png");
+    backGroundTexture.setSmooth(true);
+    carTexture.setSmooth(true);
+}
+// function which sets positions of all the cars
 void setNPCPositions(Car cars[], const int NUMBER_OF_CARS)
 {
     const int NPC_CAR_POS_X = 300;
@@ -52,41 +67,42 @@ void setNPCPositions(Car cars[], const int NUMBER_OF_CARS)
     }
 }
 
-void playerMove(Car cars[], float &speed, float &angle, const float MAX_SPEED, const float ACCELERATION, const float DECELERATION, const float TURN_SPEED)
+// function which deals with player movement
+void playerMove(Car cars[], float &speed, float &angle)
 {
-    bool Up = 0, Right = 0, Down = 0, Left = 0;
-    if (Keyboard::isKeyPressed(Keyboard::Up)) Up = 1;
+    bool Forward = 0, Right = 0, Backward = 0, Left = 0;
+    if (Keyboard::isKeyPressed(Keyboard::Up)) Forward = 1;
     if (Keyboard::isKeyPressed(Keyboard::Right)) Right = 1;
-    if (Keyboard::isKeyPressed(Keyboard::Down)) Down = 1;
+    if (Keyboard::isKeyPressed(Keyboard::Down)) Backward = 1;
     if (Keyboard::isKeyPressed(Keyboard::Left)) Left = 1;
 
-    //car movement
-    if (Up && speed < MAX_SPEED)
-        if (speed < 0)  speed += DECELERATION;
-        else  speed += ACCELERATION;
-
-    if (Down && speed > -MAX_SPEED)
-        if (speed > 0) speed -= DECELERATION;
-        else  speed -= ACCELERATION;
-
-    if (!Up && !Down)
-        if (speed - DECELERATION > 0) speed -= DECELERATION;
-        else if (speed + DECELERATION < 0) speed += DECELERATION;
+    // if moving forward
+    if (Forward && speed < Movement::MAX_SPEED)
+        if (speed < 0)  speed += Movement::DECELERATION;
+        else  speed += Movement::ACCELERATION;
+    // if moving back
+    if (Backward && speed > -Movement::MAX_SPEED)
+        if (speed > 0) speed -= Movement::DECELERATION;
+        else  speed -= Movement::ACCELERATION;
+    // if not moving back or forward
+    if (!Forward && !Backward)
+        if (speed - Movement::DECELERATION > 0) speed -= Movement::DECELERATION;
+        else if (speed + Movement::DECELERATION < 0) speed += Movement::DECELERATION;
         else speed = 0;
-
-    if (Right && speed != 0)  angle += TURN_SPEED * speed / MAX_SPEED;
-    if (Left && speed != 0)   angle -= TURN_SPEED * speed / MAX_SPEED;
-
+    // turning right and left
+    if (Right && speed != 0)  angle += Movement::TURN_SPEED * speed / Movement::MAX_SPEED;
+    if (Left && speed != 0)   angle -= Movement::TURN_SPEED * speed / Movement::MAX_SPEED;
+    // set the new speed and turn angle
     cars[0].speed = speed;
     cars[0].angle = angle;
 }
-
+// function which deals with npc movement
 void npcMove(Car cars[], const int NUMBER_OF_CARS)
 {
     for (int i = 0; i < NUMBER_OF_CARS; i++) cars[i].move();
     for (int i = 1; i < NUMBER_OF_CARS; i++) cars[i].findTarget();
 }
-
+// function which deals with collisions
 void carCollision(Car npcCars[], const int NUMBER_OF_CARS, float radius)
 {
     for (int carIndex = 0; carIndex < NUMBER_OF_CARS; carIndex++) // loop selects a car
@@ -107,7 +123,7 @@ void carCollision(Car npcCars[], const int NUMBER_OF_CARS, float radius)
             }
         }
 }
-
+// function which draws the game
 void drawGame(RenderWindow &app, Sprite backgroundSprite, int &offsetX, int &offsetY, Sprite carSprite, Car cars[], const int NUMBER_OF_CARS)
 {
     const float PI = 3.141593;
@@ -115,7 +131,7 @@ void drawGame(RenderWindow &app, Sprite backgroundSprite, int &offsetX, int &off
     app.draw(backgroundSprite);
 
     Color colors[10] = { Color::Red, Color::Green, Color::Magenta, Color::Blue, Color::White };
-
+    // cycles through all cars setting their position, rotation, colour and sprite
     for (int i = 0; i < NUMBER_OF_CARS; i++)
     {
         carSprite.setPosition(cars[i].x - offsetX, cars[i].y - offsetY);
@@ -128,17 +144,14 @@ void drawGame(RenderWindow &app, Sprite backgroundSprite, int &offsetX, int &off
 
 }
 
-
+// main game loop
 int racing()
 {
     RenderWindow app(VideoMode(640, 480), "Car Racing Game!");
     app.setFramerateLimit(60);
 
     Texture backGroundTexture,carTexture,t3;
-    backGroundTexture.loadFromFile("images/racing/background.png");
-    carTexture.loadFromFile("images/racing/car.png");
-    backGroundTexture.setSmooth(true);
-    carTexture.setSmooth(true);
+    setTextures(backGroundTexture, carTexture);
 
     Sprite backgroundSprite(backGroundTexture), carSprite(carTexture);
     backgroundSprite.scale(2,2);
@@ -150,15 +163,12 @@ int racing()
     Car cars[NUMBER_OF_CARS];
 
    float speed=0,angle=0;
-   const float MAX_SPEED = 12.0;
-   const float ACCELERATION = 0.2, DECELERATION = 0.3;
-   const float TURN_SPEED = 0.08;
 
    int offsetX=0,offsetY=0;
 
    setNPCPositions(cars, NUMBER_OF_CARS);
    
-
+   // loops while app is open
     while (app.isOpen())
     {
         Event e;
@@ -168,17 +178,16 @@ int racing()
                 app.close();
         }
 
-    playerMove(cars, speed, angle, MAX_SPEED, ACCELERATION, DECELERATION, TURN_SPEED);
-    npcMove(cars, NUMBER_OF_CARS);
+    playerMove(cars, speed, angle);
+    npcMove(cars, NUMBER_OF_CARS); 
 
-    //collision
-    carCollision(cars, NUMBER_OF_CARS, radius);
+    carCollision(cars, NUMBER_OF_CARS, radius); 
 
     drawGame(app, backgroundSprite, offsetX, offsetY, carSprite, cars, NUMBER_OF_CARS);
-
+    // moves the camera to follow the player
     if (cars[0].x > 320) offsetX = cars[0].x - 320;
     if (cars[0].y > 240) offsetY = cars[0].y - 240;
-
+    // sets new position of the background sprite
     backgroundSprite.setPosition(-offsetX, -offsetY);
     
     }
