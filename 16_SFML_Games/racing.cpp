@@ -1,8 +1,8 @@
 #include <SFML/Graphics.hpp>
 using namespace sf;
 
-const int numCheckpoints=8; //checkpoints
-int points[numCheckpoints][2] = {300, 610,
+const int NUMBER_OF_CHECKPOINTS = 8; //checkpoints
+int points[NUMBER_OF_CHECKPOINTS][2] = {300, 610,
                       1270,430,
                       1380,2380,
                       1900,2460,
@@ -25,27 +25,34 @@ struct Car
 
   void findTarget()
   {
+    const int CHECKPOINT_SIZE = 25;
+    const float TURN_SPEED = 0.005;
     float xTarget=points[checkpointCounter][0]; // gets x position of the checkpoint
     float yTarget=points[checkpointCounter][1]; // gets y position of the checkpoint
     float angleDifferenceToTarget = angle-atan2(xTarget-x,-yTarget+y); // calculates the difference between angle of car and target
-    if (sin(angleDifferenceToTarget)<0) angle+=0.005*speed; else angle-=0.005*speed; // if angle is less than 0, means target is to the left of the car, else its to the right
-    if ((x-xTarget)*(x-xTarget)+(y-yTarget)*(y-yTarget)<25*25) checkpointCounter=(checkpointCounter+1)%numCheckpoints; // calculates the squared distance between car and checkpoint, then checks if car is within 25 units of the checkpoint
+    if (sin(angleDifferenceToTarget)<0) angle+=TURN_SPEED*speed; else angle-=TURN_SPEED*speed; // if angle is less than 0, means target is to the left of the car, else its to the right
+    if ((x-xTarget)*(x-xTarget)+(y-yTarget)*(y-yTarget)<CHECKPOINT_SIZE*CHECKPOINT_SIZE) checkpointCounter=(checkpointCounter+1)%NUMBER_OF_CHECKPOINTS; // calculates the squared distance between car and checkpoint, then checks if car is within 25 units of the checkpoint
    }
 };
   
 
 
-void setNPCPositions(Car npcCars[], int numNpcCars)
+void setNPCPositions(Car cars[], const int NUMBER_OF_CARS)
 {
-    for (int i = 0; i < numNpcCars; i++)
+    const int NPC_CAR_POS_X = 300;
+    const int NPC_CAR_POS_Y = 1700;
+    const int NPC_OFFSET_X = 50;
+    const int NPC_OFFSET_Y = 80;
+
+    for (int i = 0; i < NUMBER_OF_CARS; i++)
     {
-        npcCars[i].x = 300 + i * 50;
-        npcCars[i].y = 1700 + i * 80;
-        npcCars[i].speed = 7 + i;
+        cars[i].x = NPC_CAR_POS_X + i * NPC_OFFSET_X;
+        cars[i].y = NPC_CAR_POS_Y + i * NPC_OFFSET_Y;
+        cars[i].speed = 7 + i;
     }
 }
 
-void playerMove(Car npcCars[], float &speed, float &angle, float maxSpeed, float acceleration, float deceleration , float turnSpeed)
+void playerMove(Car cars[], float &speed, float &angle, const float MAX_SPEED, const float ACCELERATION, const float DECELERATION, const float TURN_SPEED)
 {
     bool Up = 0, Right = 0, Down = 0, Left = 0;
     if (Keyboard::isKeyPressed(Keyboard::Up)) Up = 1;
@@ -54,36 +61,36 @@ void playerMove(Car npcCars[], float &speed, float &angle, float maxSpeed, float
     if (Keyboard::isKeyPressed(Keyboard::Left)) Left = 1;
 
     //car movement
-    if (Up && speed < maxSpeed)
-        if (speed < 0)  speed += deceleration;
-        else  speed += acceleration;
+    if (Up && speed < MAX_SPEED)
+        if (speed < 0)  speed += DECELERATION;
+        else  speed += ACCELERATION;
 
-    if (Down && speed > -maxSpeed)
-        if (speed > 0) speed -= deceleration;
-        else  speed -= acceleration;
+    if (Down && speed > -MAX_SPEED)
+        if (speed > 0) speed -= DECELERATION;
+        else  speed -= ACCELERATION;
 
     if (!Up && !Down)
-        if (speed - deceleration > 0) speed -= deceleration;
-        else if (speed + deceleration < 0) speed += deceleration;
+        if (speed - DECELERATION > 0) speed -= DECELERATION;
+        else if (speed + DECELERATION < 0) speed += DECELERATION;
         else speed = 0;
 
-    if (Right && speed != 0)  angle += turnSpeed * speed / maxSpeed;
-    if (Left && speed != 0)   angle -= turnSpeed * speed / maxSpeed;
+    if (Right && speed != 0)  angle += TURN_SPEED * speed / MAX_SPEED;
+    if (Left && speed != 0)   angle -= TURN_SPEED * speed / MAX_SPEED;
 
-    npcCars[0].speed = speed;
-    npcCars[0].angle = angle;
+    cars[0].speed = speed;
+    cars[0].angle = angle;
 }
 
-void npcMove(Car npcCars[], float numNpcCars)
+void npcMove(Car cars[], const int NUMBER_OF_CARS)
 {
-    for (int i = 0; i < numNpcCars; i++) npcCars[i].move();
-    for (int i = 1; i < numNpcCars; i++) npcCars[i].findTarget();
+    for (int i = 0; i < NUMBER_OF_CARS; i++) cars[i].move();
+    for (int i = 1; i < NUMBER_OF_CARS; i++) cars[i].findTarget();
 }
 
-void carCollision(Car npcCars[], float numNpcCars, float radius)
+void carCollision(Car npcCars[], const int NUMBER_OF_CARS, float radius)
 {
-    for (int carIndex = 0; carIndex < numNpcCars; carIndex++) // loop selects a car
-        for (int otherCarIndex = 0; otherCarIndex < numNpcCars; otherCarIndex++) // compares selected car to other cars
+    for (int carIndex = 0; carIndex < NUMBER_OF_CARS; carIndex++) // loop selects a car
+        for (int otherCarIndex = 0; otherCarIndex < NUMBER_OF_CARS; otherCarIndex++) // compares selected car to other cars
         {
             int xDistance = 0, yDistance = 0; // horizontal and vertical distance between 2 cars
             while (xDistance * xDistance + yDistance * yDistance < 4 * radius * radius) // while the squared distance between between 2 cars is less than the set collision threshold
@@ -101,17 +108,18 @@ void carCollision(Car npcCars[], float numNpcCars, float radius)
         }
 }
 
-void drawGame(RenderWindow &app, Sprite backgroundSprite, int &offsetX, int &offsetY, Sprite carSprite, Car npcCars[], float numNpcCars)
+void drawGame(RenderWindow &app, Sprite backgroundSprite, int &offsetX, int &offsetY, Sprite carSprite, Car cars[], const int NUMBER_OF_CARS)
 {
+    const float PI = 3.141593;
     app.clear(Color::White);
     app.draw(backgroundSprite);
 
     Color colors[10] = { Color::Red, Color::Green, Color::Magenta, Color::Blue, Color::White };
 
-    for (int i = 0; i < numNpcCars; i++)
+    for (int i = 0; i < NUMBER_OF_CARS; i++)
     {
-        carSprite.setPosition(npcCars[i].x - offsetX, npcCars[i].y - offsetY);
-        carSprite.setRotation(npcCars[i].angle * 180 / 3.141593);
+        carSprite.setPosition(cars[i].x - offsetX, cars[i].y - offsetY);
+        carSprite.setRotation(cars[i].angle * 180 / PI);
         carSprite.setColor(colors[i]);
         app.draw(carSprite);
     }
@@ -138,17 +146,17 @@ int racing()
     carSprite.setOrigin(22, 22);
     float radius=22;
 
-    const int numNpcCars=5;
-    Car npcCars[numNpcCars];
+    const int NUMBER_OF_CARS = 5;
+    Car cars[NUMBER_OF_CARS];
 
    float speed=0,angle=0;
-   float maxSpeed=12.0;
-   float acceleration=0.2, deceleration=0.3;
-   float turnSpeed=0.08;
+   const float MAX_SPEED = 12.0;
+   const float ACCELERATION = 0.2, DECELERATION = 0.3;
+   const float TURN_SPEED = 0.08;
 
    int offsetX=0,offsetY=0;
 
-   setNPCPositions(npcCars, numNpcCars);
+   setNPCPositions(cars, NUMBER_OF_CARS);
    
 
     while (app.isOpen())
@@ -160,16 +168,16 @@ int racing()
                 app.close();
         }
 
-    playerMove(npcCars, speed, angle, maxSpeed, acceleration, deceleration, turnSpeed);
-    npcMove(npcCars, numNpcCars);
+    playerMove(cars, speed, angle, MAX_SPEED, ACCELERATION, DECELERATION, TURN_SPEED);
+    npcMove(cars, NUMBER_OF_CARS);
 
     //collision
-    carCollision(npcCars, numNpcCars, radius);
+    carCollision(cars, NUMBER_OF_CARS, radius);
 
-    drawGame(app, backgroundSprite, offsetX, offsetY, carSprite, npcCars, numNpcCars);
+    drawGame(app, backgroundSprite, offsetX, offsetY, carSprite, cars, NUMBER_OF_CARS);
 
-    if (npcCars[0].x > 320) offsetX = npcCars[0].x - 320;
-    if (npcCars[0].y > 240) offsetY = npcCars[0].y - 240;
+    if (cars[0].x > 320) offsetX = cars[0].x - 320;
+    if (cars[0].y > 240) offsetY = cars[0].y - 240;
 
     backgroundSprite.setPosition(-offsetX, -offsetY);
     
