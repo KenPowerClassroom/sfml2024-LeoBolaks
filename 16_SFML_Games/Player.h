@@ -16,9 +16,9 @@ public:
 
     void constrain() {
         if (x < 0) x = 0;
-        if (x > WIDTH - 1) x = WIDTH - 1;
+        //if (x > WIDTH - 1) x = WIDTH - 1;
         if (y < 0) y = 0;
-        if (y > HEIGHT - 1) y = HEIGHT - 1;
+        //if (y > HEIGHT - 1) y = HEIGHT - 1;
     }
 
     void stop() {

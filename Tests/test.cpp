@@ -1,174 +1,74 @@
 #include "pch.h"
+#define SFML_STATIC
+#pragma comment(lib,"sfml-graphics-s-d.lib")
+#pragma comment(lib,"sfml-audio-s-d.lib")
+#pragma comment(lib,"sfml-system-s-d.lib")
+#pragma comment(lib,"sfml-window-s-d.lib")
+#pragma comment(lib,"sfml-network-s-d.lib")
 
-const int HEIGHT = 25;
-const int WIDTH = 40;
-const int tileSize = 18;
-
-#include"../16_SFML_Games/Grid.h"
-#include"../16_SFML_Games/Player.h"
+#pragma comment(lib,"opengl32.lib")
+#pragma comment(lib,"glu32.lib")
+#pragma comment(lib,"winmm.lib")
+#pragma comment(lib,"freetype.lib")
 
 
-TEST(Grid, HasWallsAndInterior) {
+#include"../16_SFML_Games/racing.cpp"
 
-	Grid grid;
 
-	EXPECT_EQ(Grid::tile::WALL, grid.cell(0, 0));
-	EXPECT_EQ(Grid::tile::WALL, grid.cell(24, 39));
-	EXPECT_EQ(Grid::tile::EMPTY, grid.cell(10, 10));
+TEST(Car, movesCorrectly)
+{
+	Car car;
+	car.x = 0;
+	car.y = 0;
+	car.speed = 5;
+	car.angle = 0; // car facing directly upwards
 
+	car.move();
+
+	ASSERT_FLOAT_EQ(car.x, 0); 
+	ASSERT_FLOAT_EQ(car.y, -5);
 }
 
-TEST(Grid, CreateNewWall) {
+TEST(Car, findsCorrectTarget)
+{
+	Car car;
 
-	Grid grid;
+	car.x = 1380;
+	car.y = 2380;
+	car.checkpointCounter = 2;
 
-	grid.newWall(10, 10);
-	EXPECT_EQ(Grid::tile::NEW_WALL, grid.cell(10, 10));
+	car.findTarget();
 
+	EXPECT_EQ(car.checkpointCounter, 3); 
 }
 
+TEST(GameSetup, SetNPCPositions)
+{
+	Car cars[5];
+	setNPCPositions(cars, 5);
 
-TEST(Grid, GridsIsClearedExceptForWalls) {
+	// check if initial position was set
+	ASSERT_FLOAT_EQ(cars[0].x, 300);
+	ASSERT_FLOAT_EQ(cars[0].y, 1700);
 
-	Grid grid;
-
-	grid.newWall(10, 10);
-
-	grid.clear();
-	EXPECT_EQ(Grid::tile::WALL, grid.cell(0, 0));
-	EXPECT_EQ(Grid::tile::WALL, grid.cell(24, 39));
-	EXPECT_EQ(Grid::tile::EMPTY, grid.cell(10, 10));
-
+	// check for correct offset
+	ASSERT_FLOAT_EQ(cars[1].x, 350);
+	ASSERT_FLOAT_EQ(cars[1].y, 1780); 
 }
 
-//------------------------
-//|                      |
-//|                      |
-//|         filled       |
-//|                      |
-//|                      |
-//|----------------------|
-//|                      |
-//|                      |
-//|         not filled   |
-//|                      |
-//|                      |
-//------------------------
+TEST(GamePhysics, CarCollision)
+{
+	Car cars[2];
+	cars[0].x = 100; cars[0].y = 100; 
+	cars[1].x = 110; cars[1].y = 110; 
+	// radius of car
+	float radius = 15;
 
-TEST(Grid, GridsIsFilledWithHorizWall) {
+	carCollision(cars, 2, radius); 
 
-	Grid grid;
+	// calculates the distance squared between the 2 cars
+	float distanceSquared = (cars[0].x - cars[1].x) * (cars[0].x - cars[1].x) + (cars[0].y - cars[1].y) * (cars[0].y - cars[1].y); 
 
-	for(int i=1;i<WIDTH-1;i++)
-		grid.newWall(10, i);
-
-	grid.markConnectedCellsNotToBeFilled(11, 1);
-
-	grid.fillEmptyCells();
-
-	EXPECT_EQ(Grid::tile::WALL, grid.cell(1, 1));
-	EXPECT_EQ(Grid::tile::WALL, grid.cell(9, 38));
-
-	EXPECT_EQ(Grid::tile::EMPTY, grid.cell(11, 1));
-	EXPECT_EQ(Grid::tile::EMPTY, grid.cell(23, 38));
-
+	ASSERT_GE(distanceSquared, 4 * radius * radius); 
 }
 
-//------------------------
-//|                      |
-//|                      |
-//|        not filled    |
-//|                      |
-//|                      |
-//|-------------         |
-//|            |         |
-//|            |         |
-//|   filled   |         |
-//|            |         |
-//|            |         |
-//------------------------
-
-TEST(Grid, GridsIsFilledWithHorizAndVertWall) {
-
-	Grid grid;
-
-	for (int x = 1; x < 10; x++)
-		grid.newWall(10, x);
-	for (int y = 10; y < HEIGHT-1; y++)
-		grid.newWall(y, 10);
-
-	grid.markConnectedCellsNotToBeFilled(2, 2);
-
-	grid.fillEmptyCells();
-
-	EXPECT_EQ(Grid::tile::WALL, grid.cell(11, 1));
-	EXPECT_EQ(Grid::tile::WALL, grid.cell(23, 9));
-
-	EXPECT_EQ(Grid::tile::EMPTY, grid.cell(1, 1));
-	EXPECT_EQ(Grid::tile::EMPTY, grid.cell(9, 38));
-	EXPECT_EQ(Grid::tile::EMPTY, grid.cell(23, 38));
-
-
-}
-
-
-TEST(Player, ConstrainedHorizontallyRight) {
-
-	Player p;
-
-	p.x = 10, p.y = 10;
-
-	p.goRight();
-
-	for (int i = 0; i < 100; i++)
-		p.move();
-
-	EXPECT_EQ(10, p.y);
-	EXPECT_EQ(WIDTH-1, p.x);
-}
-
-TEST(Player, ConstrainedHorizontallyLeft) {
-
-	Player p;
-
-	p.x = 10, p.y = 10;
-
-	p.goLeft();
-
-	for (int i = 0; i < 100; i++)
-		p.move();
-
-	EXPECT_EQ(10, p.y);
-	EXPECT_EQ(0, p.x);
-}
-
-TEST(Player, ConstrainedVerticallyUp) {
-
-	Player p;
-
-	p.x = 10, p.y = 10;
-
-	p.goUp();
-
-	for (int i = 0; i < 100; i++)
-		p.move();
-
-	EXPECT_EQ(0, p.y);
-	EXPECT_EQ(10, p.x);
-}
-
-TEST(Player, ConstrainedDiagonallyFast) {
-
-	Player p;
-
-	p.x = 10, p.y = 10;
-	p.dx = 5;
-	p.dy = 6;
-
-	
-	for (int i = 0; i < 100; i++)
-		p.move();
-
-	EXPECT_EQ(HEIGHT-1, p.y);
-	EXPECT_EQ(WIDTH-1, p.x);
-}
